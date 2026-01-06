@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Happy Birthday 🎂</title>
+
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #333;
+  font-family: "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+/* ===== OVERLAYS ===== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  color: white;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+}
+
+.overlay.hidden { display: none; }
+
+.overlay-text {
+  font-size: 2rem;
+}
+.overlay-text .sub {
+  font-size: 1rem;
+  opacity: 0.7;
+  margin-top: 10px;
+}
+
+/* ===== MESSAGES ===== */
+.message {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  color: white;
+  pointer-events: none;
+}
+
+.intro { top: 10%; font-size: 2.5rem; }
+.final {
+  top: 18%;
+  font-size: 2.3rem;
+  animation: fadeIn 2.5s forwards;
+}
+
+.hidden { display: none; }
+
+@keyframes fadeIn { to { opacity: 1; } }
+
+/* ===== CAKE ===== */
+.cake-container {
+  position: absolute;
+  width: 100%;
+  bottom: 5%;
+  display: flex;
+  justify-content: center;
+}
+
+.cake {
+  position: relative;
+  width: 280px;
+  height: 200px;
+}
+
+/* ===== PLATE ===== */
+.plate {
+  width: 300px;
+  height: 120px;
+  background: #ccc;
+  border-radius: 50%;
+  position: absolute;
+  bottom: -15px;
+  left: -10px;
+}
+
+/* ===== CAKE LAYERS ===== */
+.layer {
+  width: 280px;
+  height: 100px;
+  border-radius: 50%;
+  position: absolute;
+  background: #553c13;
+}
+.layer-top { top: 0; }
+.layer-middle { top: 35px; }
+.layer-bottom { top: 70px; }
+
+/* ===== ICING ===== */
+.icing {
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  width: 260px;
+  height: 90px;
+  background: #f0e4d0;
+  border-radius: 50%;
+}
+
+/* ===== CANDLES ===== */
+.candles {
+  position: absolute;
+  top: -25px;
+  left: 20px;
+  width: 240px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.candle {
+  width: 10px;
+  height: 35px;
+  background: #7b020b;
+  border-radius: 5px;
+  position: relative;
+  cursor: pointer;
+}
+
+.flame {
+  position: absolute;
+  width: 10px;
+  height: 22px;
+  background: orange;
+  border-radius: 50% 50% 50% 50%;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: flicker 0.8s infinite alternate;
+}
+
+.flame.off {
+  opacity: 0;
+  animation: none;
+  transition: opacity 1.5s ease;
+}
+
+@keyframes flicker {
+  from { transform: translateX(-50%) skewX(-5deg); }
+  to   { transform: translateX(-50%) skewX(5deg); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- TAP TO START -->
+<div class="overlay" id="startOverlay">
+  <div class="overlay-text">
+    🎂 Tap to start
+    <div class="sub">Allow mic access</div>
+  </div>
+</div>
+
+<!-- BLOW PROMPT -->
+<div class="overlay hidden" id="blowOverlay">
+  <div class="overlay-text">
+    💨 Blow out the candles!
+    <div class="sub">Make a wish ✨</div>
+  </div>
+</div>
+
+<!-- INTRO -->
+<div class="message intro" id="intro">
+  Happy Birthday 🎉
+</div>
+
+<!-- CAKE -->
+<div class="cake-container">
+  <div class="cake">
+    <div class="plate"></div>
+    <div class="layer layer-bottom"></div>
+    <div class="layer layer-middle"></div>
+    <div class="layer layer-top"></div>
+    <div class="icing"></div>
+
+    <!-- 21 CANDLES -->
+    <div class="candles" id="candles">
+      <!-- JS will generate -->
+    </div>
+  </div>
+</div>
+
+<!-- FINAL MESSAGE -->
+<div class="message final hidden" id="final">
+  
+</div>
+
+<audio id="song" src="happy-birthday.mp3" loop></audio>
+
+<script>
+const startOverlay = document.getElementById("startOverlay");
+const blowOverlay  = document.getElementById("blowOverlay");
+const song = document.getElementById("song");
+const finalMsg = document.getElementById("final");
+const candlesWrap = document.getElementById("candles");
+
+let blownOut = false;
+let analyser, data;
+
+/* CREATE 21 CANDLES */
+for (let i = 0; i < 21; i++) {
+  const candle = document.createElement("div");
+  candle.className = "candle";
+  candle.innerHTML = `<div class="flame"></div>`;
+  candle.onclick = blowOut;
+  candlesWrap.appendChild(candle);
+}
+
+const flames = document.querySelectorAll(".flame");
+
+startOverlay.addEventListener("click", async () => {
+  startOverlay.classList.add("hidden");
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  await audioCtx.resume();
+
+  song.play();              // 🎶 START MUSIC WITH PROMPT
+  blowOverlay.classList.remove("hidden");
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mic = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    mic.connect(analyser);
+    data = new Uint8Array(analyser.frequencyBinCount);
+    detectBlow();
+  } catch {
+    console.log("Mic denied — tap fallback active");
+  }
+});
+
+function detectBlow() {
+  if (blownOut) return;
+  analyser.getByteFrequencyData(data);
+  const volume = data.reduce((a,b) => a + b) / data.length;
+  if (volume > 45) blowOut();
+  requestAnimationFrame(detectBlow);
+}
+
+function blowOut() {
+  if (blownOut) return;
+  blownOut = true;
+
+  flames.forEach(f => f.classList.add("off"));
+  blowOverlay.classList.add("hidden");
+
+  setTimeout(() => {
+    song.pause();
+    finalMsg.classList.remove("hidden");
+  }, 1500);
+}
+</script>
+
+</body>
+</html>
